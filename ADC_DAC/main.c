@@ -3,9 +3,10 @@
 float slope = -0.002794;
 float intercept = 54.8924;
 float temp;
-float target=50;
+float target=60;
 float diff;
 char space = ' ';
+float adcFlag;
 
 float volt, ADC_Voltage, temp;
 
@@ -44,7 +45,6 @@ void initializeADC(){
     ADC12MCTL0 = ADC12INCH_0;                 // ref+=AVcc, channel = A0
     ADC12IE = 0x01;                           // Enable ADC12IFG.1
     ADC12CTL0 |= ADC12ENC;                    // Enable conversions
-    ADC12CTL0 |= ADC12SC;                     // Start convn - software trigger
 }
 
 int main(void)
@@ -64,7 +64,7 @@ __interrupt void ADC12ISR (void)
 
     volt = ADC12MEM0;
     ADC_Voltage = (volt/4095) * 3.3;
-    temp = (20*ADC_Voltage)+20;
+    temp = ((ADC_Voltage-.5)/.01);
     UCA1TXBUF = temp;
     diff = temp - target;
     volatile float P = diff*85;
@@ -86,7 +86,15 @@ __interrupt void ADC12ISR (void)
                  {
                      TA0CCR1 = P;
                  }
-    __delay_cycles(1000000);
+    __delay_cycles(100);
+    ADC12IV = 0;
 }
 
-
+#pragma vector=USCI_A1_VECTOR
+__interrupt void USCI_A1_ISR(void)
+{
+    target = UCA1RXBUF;
+    //__delay_cycles(1000);
+    ADC12CTL0 |= ADC12SC;
+    P1OUT ^= BIT0;
+}
